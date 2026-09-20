@@ -77,9 +77,23 @@ type ItemField struct {
 }
 
 type GeneratorRecipe struct {
-	Length        int
-	CharacterSets []CharacterSet
+	Kind              GeneratorRecipeKind
+	Length            int
+	CharacterSets     []CharacterSet
+	ExcludeCharacters string
+	WordCount         int
+	Separator         string
+	Capitalize        bool
+	WordList          string
 }
+
+type GeneratorRecipeKind string
+
+const (
+	RecipeKindRandom    GeneratorRecipeKind = "RANDOM"
+	RecipeKindMemorable GeneratorRecipeKind = "MEMORABLE"
+	RecipeKindPin       GeneratorRecipeKind = "PIN"
+)
 
 type ItemURL struct {
 	URL     string
@@ -364,27 +378,72 @@ func toSDKWebsites(urls []ItemURL) []sdk.Website {
 	return websites
 }
 
-func generatePassword(recipe *GeneratorRecipe) (string, error) {
-	includeDigits := false
-	includeSymbols := false
+// separatorToSDKMap translates provider-level separator values to the SDK's SeparatorType.
+var separatorToSDKMap = map[string]sdk.SeparatorType{
+	"digits":            sdk.SeparatorTypeDigits,
+	"digits_and_symbols": sdk.SeparatorTypeDigitsAndSymbols,
+	"spaces":            sdk.SeparatorTypeSpaces,
+	"hyphens":           sdk.SeparatorTypeHyphens,
+	"underscores":       sdk.SeparatorTypeUnderscores,
+	"periods":           sdk.SeparatorTypePeriods,
+	"commas":            sdk.SeparatorTypeCommas,
+}
 
-	for _, characterSet := range recipe.CharacterSets {
-		switch characterSet {
-		case CharacterSetDigits:
-			includeDigits = true
-		case CharacterSetSymbols:
-			includeSymbols = true
-		}
+// wordListToSDKMap translates provider-level word list values to the SDK's WordListType.
+var wordListToSDKMap = map[string]sdk.WordListType{
+	"full_words":   sdk.WordListTypeFullWords,
+	"syllables":    sdk.WordListTypeSyllables,
+	"three_letters": sdk.WordListTypeThreeLetters,
+}
+
+func generatePassword(recipe *GeneratorRecipe) (string, error) {
+	kind := recipe.Kind
+	if kind == "" {
+		kind = RecipeKindRandom
 	}
 
-	passwordResponse, err := sdk.Secrets.GeneratePassword(
-		context.Background(),
-		sdk.NewPasswordRecipeTypeVariantRandom(&sdk.PasswordRecipeRandomInner{
+	var sdkRecipe sdk.PasswordRecipe
+	switch kind {
+	case RecipeKindMemorable:
+		separator := sdk.SeparatorTypeHyphens
+		if s, ok := separatorToSDKMap[recipe.Separator]; ok {
+			separator = s
+		}
+		wordList := sdk.WordListTypeFullWords
+		if w, ok := wordListToSDKMap[recipe.WordList]; ok {
+			wordList = w
+		}
+		sdkRecipe = sdk.NewPasswordRecipeTypeVariantMemorable(&sdk.PasswordRecipeMemorableInner{
+			SeparatorType: separator,
+			Capitalize:    recipe.Capitalize,
+			WordListType:  wordList,
+			WordCount:     uint32(recipe.WordCount),
+		})
+	case RecipeKindPin:
+		sdkRecipe = sdk.NewPasswordRecipeTypeVariantPin(&sdk.PasswordRecipePinInner{
+			Length: uint32(recipe.Length),
+		})
+	default:
+		includeDigits := false
+		includeSymbols := false
+
+		for _, characterSet := range recipe.CharacterSets {
+			switch characterSet {
+			case CharacterSetDigits:
+				includeDigits = true
+			case CharacterSetSymbols:
+				includeSymbols = true
+			}
+		}
+
+		sdkRecipe = sdk.NewPasswordRecipeTypeVariantRandom(&sdk.PasswordRecipeRandomInner{
 			IncludeDigits:  includeDigits,
 			IncludeSymbols: includeSymbols,
 			Length:         uint32(recipe.Length),
-		}),
-	)
+		})
+	}
+
+	passwordResponse, err := sdk.Secrets.GeneratePassword(context.Background(), sdkRecipe)
 	if err != nil {
 		return "", err
 	}
@@ -553,17 +612,34 @@ func toConnectFields(fields []ItemField) ([]*connect.ItemField, error) {
 
 		// Include recipe if present
 		if f.Recipe != nil {
-			// Connect allows confiugration of letters for password recipes
-			// We need to include letters in the character sets in order to ensure they are not excluded
-			characterSets := []string{"LETTERS"}
-
-			for _, cs := range f.Recipe.CharacterSets {
-				characterSets = append(characterSets, string(cs))
+			recipeKind := f.Recipe.Kind
+			if recipeKind == "" {
+				recipeKind = RecipeKindRandom
 			}
 
-			field.Recipe = &connect.GeneratorRecipe{
-				Length:        f.Recipe.Length,
-				CharacterSets: characterSets,
+			// Connect can only generate random passwords server-side.
+			// Memorable and PIN recipes are generated locally and sent as plain values.
+			if recipeKind != RecipeKindRandom {
+				generated, err := generatePassword(f.Recipe)
+				if err != nil {
+					return connectFields, fmt.Errorf("toConnectFields: failed to generate %s password: %w", strings.ToLower(string(recipeKind)), err)
+				}
+				field.Value = generated
+				field.Generate = false
+			} else {
+				// Connect allows configuration of letters for password recipes
+				// We need to include letters in the character sets in order to ensure they are not excluded
+				characterSets := []string{"LETTERS"}
+
+				for _, cs := range f.Recipe.CharacterSets {
+					characterSets = append(characterSets, string(cs))
+				}
+
+				field.Recipe = &connect.GeneratorRecipe{
+					Length:            f.Recipe.Length,
+					CharacterSets:     characterSets,
+					ExcludeCharacters: f.Recipe.ExcludeCharacters,
+				}
 			}
 		}
 

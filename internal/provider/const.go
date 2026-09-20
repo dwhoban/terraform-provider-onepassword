@@ -61,10 +61,16 @@ const (
 	fieldTypeDescription  = "The type of value stored in the field."
 	fieldValueDescription = "The value of the field."
 
-	passwordRecipeDescription  = "The recipe used to generate a new value for a password."
-	passwordLengthDescription  = "The length of the password to be generated."
-	passwordDigitsDescription  = "Use digits [0-9] when generating the password."
-	passwordSymbolsDescription = "Use symbols [!@.-_*] when generating the password."
+	passwordRecipeDescription      = "The recipe used to generate a new value for a password."
+	passwordTypeDescription        = "The type of password to generate."
+	passwordLengthDescription      = "The length of the password to be generated. Applies to `random` and `pin` types."
+	passwordDigitsDescription      = "Use digits [0-9] when generating the password. Applies to the `random` type."
+	passwordSymbolsDescription     = "Use symbols [!@.-_*] when generating the password. Applies to the `random` type."
+	passwordExcludeCharsDescription = "Characters to exclude when generating the password. Applies to the `random` type. Requires Connect v1.4.0 or later when using 1Password Connect."
+	passwordWordCountDescription   = "The number of words in the password. Applies to the `memorable` type."
+	passwordSeparatorDescription   = "The separator between words. Applies to the `memorable` type."
+	passwordCapitalizeDescription  = "Uppercase one randomly selected word. Applies to the `memorable` type."
+	passwordWordListDescription    = "The type of word list used. Applies to the `memorable` type."
 
 	enumDescription = "%s One of %q"
 
@@ -72,6 +78,12 @@ const (
 )
 
 var (
+	recipeTypes = []string{"random", "memorable", "pin"}
+
+	recipeSeparators = []string{"digits", "digits_and_symbols", "spaces", "hyphens", "underscores", "periods", "commas"}
+
+	recipeWordLists = []string{"full_words", "syllables", "three_letters"}
+
 	dbTypes = []string{"db2", "filemaker", "msaccess", "mssql", "mysql", "oracle", "postgresql", "sqlite", "other"}
 
 	categories = []string{

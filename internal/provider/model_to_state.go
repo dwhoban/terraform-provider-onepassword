@@ -40,6 +40,46 @@ func toStateTags(ctx context.Context, modelTags []string, stateTags types.List) 
 	return stateTags, nil
 }
 
+func toStateRecipe(r *model.GeneratorRecipe) PasswordRecipeModel {
+	kind := "random"
+	switch r.Kind {
+	case model.RecipeKindMemorable:
+		kind = "memorable"
+	case model.RecipeKindPin:
+		kind = "pin"
+	}
+
+	charSets := map[string]bool{}
+	for _, s := range r.CharacterSets {
+		charSets[strings.ToLower(string(s))] = true
+	}
+
+	separator := r.Separator
+	if separator == "" {
+		separator = "hyphens"
+	}
+	wordList := r.WordList
+	if wordList == "" {
+		wordList = "full_words"
+	}
+	wordCount := r.WordCount
+	if wordCount == 0 {
+		wordCount = 3
+	}
+
+	return PasswordRecipeModel{
+		Type:              types.StringValue(kind),
+		Length:            types.Int64Value(int64(r.Length)),
+		Digits:            types.BoolValue(charSets[strings.ToLower(string(model.CharacterSetDigits))]),
+		Symbols:           types.BoolValue(charSets[strings.ToLower(string(model.CharacterSetSymbols))]),
+		ExcludeCharacters: setStringValue(r.ExcludeCharacters),
+		WordCount:         types.Int64Value(int64(wordCount)),
+		Separator:         types.StringValue(separator),
+		Capitalize:        types.BoolValue(r.Capitalize),
+		WordList:          types.StringValue(wordList),
+	}
+}
+
 func toStateSectionsAndFieldsList(modelSections []model.ItemSection, modelFields []model.ItemField, stateSections []OnePasswordItemResourceSectionListModel) []OnePasswordItemResourceSectionListModel {
 	for _, s := range modelSections {
 		section := OnePasswordItemResourceSectionListModel{}
@@ -85,18 +125,10 @@ func toStateSectionsAndFieldsList(modelSections []model.ItemSection, modelFields
 				stateField.Type = setStringValue(string(f.Type))
 				stateField.Value = setStringValuePreservingEmpty(f.Value, stateField.Value)
 
-				if f.Recipe != nil {
-					charSets := map[string]bool{}
-					for _, s := range f.Recipe.CharacterSets {
-						charSets[strings.ToLower(string(s))] = true
-					}
-
-					stateField.Recipe = []PasswordRecipeModel{{
-						Length:  types.Int64Value(int64(f.Recipe.Length)),
-						Digits:  types.BoolValue(charSets[strings.ToLower(string(model.CharacterSetDigits))]),
-						Symbols: types.BoolValue(charSets[strings.ToLower(string(model.CharacterSetSymbols))]),
-					}}
-				}
+			if f.Recipe != nil {
+				recipe := toStateRecipe(f.Recipe)
+				stateField.Recipe = []PasswordRecipeModel{recipe}
+			}
 
 				if newField {
 					existingFields = append(existingFields, stateField)
@@ -149,16 +181,8 @@ func toStateSectionsAndFieldsMap(item *model.Item, stateSectionMap map[string]On
 			}
 
 			if modelField.Recipe != nil {
-				charSets := map[string]bool{}
-				for _, s := range modelField.Recipe.CharacterSets {
-					charSets[strings.ToLower(string(s))] = true
-				}
-
-				field.Recipe = &PasswordRecipeModel{
-					Length:  types.Int64Value(int64(modelField.Recipe.Length)),
-					Digits:  types.BoolValue(charSets[strings.ToLower(string(model.CharacterSetDigits))]),
-					Symbols: types.BoolValue(charSets[strings.ToLower(string(model.CharacterSetSymbols))]),
-				}
+				recipe := toStateRecipe(modelField.Recipe)
+				field.Recipe = &recipe
 			} else if sectionExists {
 				// If server didn't return a recipe - preserve from existing plan/state if available
 				if existingField, fieldExists := existingSection.FieldMap[modelField.Label]; fieldExists {

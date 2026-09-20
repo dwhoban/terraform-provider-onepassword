@@ -858,9 +858,14 @@ func TestToStateSectionsAndFieldsMap(t *testing.T) {
 							Type:  types.StringValue("CONCEALED"),
 							Value: types.StringValue("Pass123!@#"),
 							Recipe: &PasswordRecipeModel{
-								Length:  types.Int64Value(20),
-								Digits:  types.BoolValue(true), // Has digits
-								Symbols: types.BoolValue(true), // Has symbols
+								Type:       types.StringValue("random"),
+								Length:     types.Int64Value(20),
+								Digits:     types.BoolValue(true), // Has digits
+								Symbols:    types.BoolValue(true), // Has symbols
+								WordCount:  types.Int64Value(3),
+								Separator:  types.StringValue("hyphens"),
+								Capitalize: types.BoolValue(false),
+								WordList:   types.StringValue("full_words"),
 							},
 						},
 					},
@@ -896,9 +901,14 @@ func TestToStateSectionsAndFieldsMap(t *testing.T) {
 							Type:  types.StringValue("CONCEALED"),
 							Value: types.StringValue("PasswordOnly"),
 							Recipe: &PasswordRecipeModel{
-								Length:  types.Int64Value(15),
-								Digits:  types.BoolValue(false), // No digits
-								Symbols: types.BoolValue(false), // No symbols
+								Type:       types.StringValue("random"),
+								Length:     types.Int64Value(15),
+								Digits:     types.BoolValue(false), // No digits
+								Symbols:    types.BoolValue(false), // No symbols
+								WordCount:  types.Int64Value(3),
+								Separator:  types.StringValue("hyphens"),
+								Capitalize: types.BoolValue(false),
+								WordList:   types.StringValue("full_words"),
 							},
 						},
 					},

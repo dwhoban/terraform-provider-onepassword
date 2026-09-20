@@ -205,9 +205,24 @@ func parseGeneratorRecipeFromModel(recipe *PasswordRecipeModel) (*model.Generato
 		return nil, nil
 	}
 
+	kind := model.RecipeKindRandom
+	switch recipe.Type.ValueString() {
+	case "memorable":
+		kind = model.RecipeKindMemorable
+	case "pin":
+		kind = model.RecipeKindPin
+	case "", "random":
+	default:
+		return nil, fmt.Errorf("password_recipe.type must be one of %v", recipeTypes)
+	}
+
 	parsed := &model.GeneratorRecipe{
-		Length:        32,
-		CharacterSets: []model.CharacterSet{},
+		Kind:              kind,
+		CharacterSets:     []model.CharacterSet{},
+		ExcludeCharacters: recipe.ExcludeCharacters.ValueString(),
+		Separator:         recipe.Separator.ValueString(),
+		WordList:          recipe.WordList.ValueString(),
+		Capitalize:        recipe.Capitalize.ValueBool(),
 	}
 
 	length := recipe.Length.ValueInt64()
@@ -217,13 +232,27 @@ func parseGeneratorRecipeFromModel(recipe *PasswordRecipeModel) (*model.Generato
 
 	if length > 0 {
 		parsed.Length = int(length)
+	} else {
+		parsed.Length = 32
 	}
 
-	if recipe.Digits.ValueBool() {
-		parsed.CharacterSets = append(parsed.CharacterSets, model.CharacterSetDigits)
+	wordCount := recipe.WordCount.ValueInt64()
+	if wordCount != 0 && (wordCount < 3 || wordCount > 15) {
+		return nil, fmt.Errorf("password_recipe.word_count must be an integer between 3 and 15")
 	}
-	if recipe.Symbols.ValueBool() {
-		parsed.CharacterSets = append(parsed.CharacterSets, model.CharacterSetSymbols)
+	if wordCount > 0 {
+		parsed.WordCount = int(wordCount)
+	} else {
+		parsed.WordCount = 3
+	}
+
+	if kind == model.RecipeKindRandom {
+		if recipe.Digits.ValueBool() {
+			parsed.CharacterSets = append(parsed.CharacterSets, model.CharacterSetDigits)
+		}
+		if recipe.Symbols.ValueBool() {
+			parsed.CharacterSets = append(parsed.CharacterSets, model.CharacterSetSymbols)
+		}
 	}
 
 	return parsed, nil

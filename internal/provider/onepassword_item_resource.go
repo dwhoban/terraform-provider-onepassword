@@ -66,9 +66,15 @@ type OnePasswordItemResourceModel struct {
 }
 
 type PasswordRecipeModel struct {
-	Length  types.Int64 `tfsdk:"length"`
-	Digits  types.Bool  `tfsdk:"digits"`
-	Symbols types.Bool  `tfsdk:"symbols"`
+	Type              types.String `tfsdk:"type"`
+	Length            types.Int64  `tfsdk:"length"`
+	Digits            types.Bool   `tfsdk:"digits"`
+	Symbols           types.Bool   `tfsdk:"symbols"`
+	ExcludeCharacters types.String `tfsdk:"exclude_characters"`
+	WordCount         types.Int64  `tfsdk:"word_count"`
+	Separator         types.String `tfsdk:"separator"`
+	Capitalize        types.Bool   `tfsdk:"capitalize"`
+	WordList          types.String `tfsdk:"word_list"`
 }
 
 // OnePasswordItemResourceSectionListModel is used for list-based sections
@@ -106,6 +112,78 @@ func (r *OnePasswordItemResource) Metadata(ctx context.Context, req resource.Met
 	resp.TypeName = req.ProviderTypeName + "_item"
 }
 
+func passwordRecipeAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"type": schema.StringAttribute{
+			MarkdownDescription: fmt.Sprintf(enumDescription, passwordTypeDescription, recipeTypes),
+			Optional:            true,
+			Computed:            true,
+			Default:             stringdefault.StaticString("random"),
+			Validators: []validator.String{
+				stringvalidator.OneOf(recipeTypes...),
+			},
+		},
+		"length": schema.Int64Attribute{
+			MarkdownDescription: passwordLengthDescription,
+			Optional:            true,
+			Computed:            true,
+			Default:             int64default.StaticInt64(32),
+			Validators: []validator.Int64{
+				int64validator.Between(1, 64),
+			},
+		},
+		"digits": schema.BoolAttribute{
+			MarkdownDescription: passwordDigitsDescription,
+			Optional:            true,
+			Computed:            true,
+			Default:             booldefault.StaticBool(true),
+		},
+		"symbols": schema.BoolAttribute{
+			MarkdownDescription: passwordSymbolsDescription,
+			Optional:            true,
+			Computed:            true,
+			Default:             booldefault.StaticBool(true),
+		},
+		"exclude_characters": schema.StringAttribute{
+			MarkdownDescription: passwordExcludeCharsDescription,
+			Optional:            true,
+		},
+		"word_count": schema.Int64Attribute{
+			MarkdownDescription: passwordWordCountDescription,
+			Optional:            true,
+			Computed:            true,
+			Default:             int64default.StaticInt64(3),
+			Validators: []validator.Int64{
+				int64validator.Between(3, 15),
+			},
+		},
+		"separator": schema.StringAttribute{
+			MarkdownDescription: fmt.Sprintf(enumDescription, passwordSeparatorDescription, recipeSeparators),
+			Optional:            true,
+			Computed:            true,
+			Default:             stringdefault.StaticString("hyphens"),
+			Validators: []validator.String{
+				stringvalidator.OneOf(recipeSeparators...),
+			},
+		},
+		"capitalize": schema.BoolAttribute{
+			MarkdownDescription: passwordCapitalizeDescription,
+			Optional:            true,
+			Computed:            true,
+			Default:             booldefault.StaticBool(false),
+		},
+		"word_list": schema.StringAttribute{
+			MarkdownDescription: fmt.Sprintf(enumDescription, passwordWordListDescription, recipeWordLists),
+			Optional:            true,
+			Computed:            true,
+			Default:             stringdefault.StaticString("full_words"),
+			Validators: []validator.String{
+				stringvalidator.OneOf(recipeWordLists...),
+			},
+		},
+	}
+}
+
 func (r *OnePasswordItemResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	// TODO: Consider using SingleNested
 	passwordRecipeBlockSchema := schema.ListNestedBlock{
@@ -114,29 +192,7 @@ func (r *OnePasswordItemResource) Schema(ctx context.Context, req resource.Schem
 			listvalidator.SizeAtMost(1),
 		},
 		NestedObject: schema.NestedBlockObject{
-			Attributes: map[string]schema.Attribute{
-				"length": schema.Int64Attribute{
-					MarkdownDescription: passwordLengthDescription,
-					Optional:            true,
-					Computed:            true,
-					Default:             int64default.StaticInt64(32),
-					Validators: []validator.Int64{
-						int64validator.Between(1, 64),
-					},
-				},
-				"digits": schema.BoolAttribute{
-					MarkdownDescription: passwordDigitsDescription,
-					Optional:            true,
-					Computed:            true,
-					Default:             booldefault.StaticBool(true),
-				},
-				"symbols": schema.BoolAttribute{
-					MarkdownDescription: passwordSymbolsDescription,
-					Optional:            true,
-					Computed:            true,
-					Default:             booldefault.StaticBool(true),
-				},
-			},
+			Attributes: passwordRecipeAttributes(),
 		},
 	}
 
@@ -187,33 +243,11 @@ func (r *OnePasswordItemResource) Schema(ctx context.Context, req resource.Schem
 								validateMonthYear(),
 							},
 						},
-						"password_recipe": schema.SingleNestedAttribute{
-							MarkdownDescription: passwordRecipeDescription,
-							Optional:            true,
-							Attributes: map[string]schema.Attribute{
-								"length": schema.Int64Attribute{
-									MarkdownDescription: passwordLengthDescription,
-									Optional:            true,
-									Computed:            true,
-									Default:             int64default.StaticInt64(32),
-									Validators: []validator.Int64{
-										int64validator.Between(1, 64),
-									},
-								},
-								"digits": schema.BoolAttribute{
-									MarkdownDescription: passwordDigitsDescription,
-									Optional:            true,
-									Computed:            true,
-									Default:             booldefault.StaticBool(true),
-								},
-								"symbols": schema.BoolAttribute{
-									MarkdownDescription: passwordSymbolsDescription,
-									Optional:            true,
-									Computed:            true,
-									Default:             booldefault.StaticBool(true),
-								},
-							},
-						},
+					"password_recipe": schema.SingleNestedAttribute{
+						MarkdownDescription: passwordRecipeDescription,
+						Optional:            true,
+						Attributes:          passwordRecipeAttributes(),
+					},
 					},
 				},
 			},
@@ -793,6 +827,19 @@ func parseGeneratorRecipeList(recipeObject []PasswordRecipeModel) (*model.Genera
 
 func addRecipe(f *model.ItemField, r *model.GeneratorRecipe) {
 	f.Recipe = r
+
+	kind := r.Kind
+	if kind == "" {
+		kind = model.RecipeKindRandom
+	}
+
+	// Memorable and PIN recipes have no adherence heuristic: generate only when no value is set.
+	if kind != model.RecipeKindRandom {
+		if f.Value == "" {
+			f.Generate = true
+		}
+		return
+	}
 
 	// Check to see if the current value adheres to the recipe
 
