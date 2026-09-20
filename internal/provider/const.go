@@ -83,7 +83,7 @@ const (
 	passwordLengthDescription       = "The length of the password to be generated. Applies to `random` and `pin` types."
 	passwordDigitsDescription       = "Use digits [0-9] when generating the password. Applies to the `random` type."
 	passwordSymbolsDescription      = "Use symbols [!@.-_*] when generating the password. Applies to the `random` type."
-	passwordExcludeCharsDescription = "Characters to exclude when generating the password. Applies to the `random` type. Requires Connect v1.4.0 or later when using 1Password Connect."
+	passwordExcludeCharsDescription = "Characters to exclude when generating the password. Applies to the `random` type. On 1Password Connect this requires Connect v1.4.0 or later."
 	passwordWordCountDescription    = "The number of words in the password. Applies to the `memorable` type."
 	passwordSeparatorDescription    = "The separator between words. Applies to the `memorable` type."
 	passwordCapitalizeDescription   = "Uppercase one randomly selected word. Applies to the `memorable` type."

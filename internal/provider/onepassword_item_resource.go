@@ -907,20 +907,17 @@ func modelToState(ctx context.Context, modelItem *model.Item, state *OnePassword
 	toStateTopLevelFields(modelItem.Fields, state)
 	toStateCategoryFields(modelItem, state)
 
-	// SSH key attributes are only meaningful for SSH key items.
+	// SSH key attributes are only meaningful for SSH key items and can never
+	// be set in configuration (Computed only), so they are cleared outright
+	// for other categories. Nulling only unknown values is not enough:
+	// UseStateForUnknown carries the previous values across category
+	// replacements, which would leak an old private key into the new item's
+	// state.
 	if modelItem.Category != model.SSHKey {
-		if state.PrivateKey.IsUnknown() {
-			state.PrivateKey = types.StringNull()
-		}
-		if state.PublicKey.IsUnknown() {
-			state.PublicKey = types.StringNull()
-		}
-		if state.Fingerprint.IsUnknown() {
-			state.Fingerprint = types.StringNull()
-		}
-		if state.SSHKeyTypeOf.IsUnknown() {
-			state.SSHKeyTypeOf = types.StringNull()
-		}
+		state.PrivateKey = types.StringNull()
+		state.PublicKey = types.StringNull()
+		state.Fingerprint = types.StringNull()
+		state.SSHKeyTypeOf = types.StringNull()
 	}
 
 	// Mirror the schema defaults so imported state matches created state.

@@ -1289,3 +1289,55 @@ func TestToStateSectionsAndFieldsMap(t *testing.T) {
 		})
 	}
 }
+
+// Regression test for SSH key attributes surviving a category change: the
+// plan carries the previous values forward via UseStateForUnknown when the
+// category forces replacement, so modelToState must clear them outright for
+// non-SSH items rather than only nulling unknown values.
+func TestModelToStateClearsSSHKeyAttributesForNonSSHItems(t *testing.T) {
+	state := &OnePasswordItemResourceModel{
+		Category:     types.StringValue("ssh_key"),
+		PrivateKey:   types.StringValue("-----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----"),
+		PublicKey:    types.StringValue("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample"),
+		Fingerprint:  types.StringValue("SHA256:example"),
+		SSHKeyTypeOf: types.StringValue("Ed25519"),
+		Tags:         types.ListNull(types.StringType),
+	}
+
+	loginItem := &model.Item{
+		ID:       "item1",
+		VaultID:  "vault1",
+		Title:    "login item",
+		Category: model.Login,
+		Fields: []model.ItemField{
+			{
+				ID:      "username",
+				Label:   "username",
+				Purpose: model.FieldPurposeUsername,
+				Type:    model.FieldTypeString,
+				Value:   "user",
+			},
+		},
+	}
+
+	diagnostics := modelToState(context.Background(), loginItem, state)
+	if diagnostics.HasError() {
+		t.Fatalf("modelToState() diagnostics: %+v", diagnostics)
+	}
+
+	if !state.PrivateKey.IsNull() {
+		t.Errorf("PrivateKey: got %q, want null", state.PrivateKey.ValueString())
+	}
+	if !state.PublicKey.IsNull() {
+		t.Errorf("PublicKey: got %q, want null", state.PublicKey.ValueString())
+	}
+	if !state.Fingerprint.IsNull() {
+		t.Errorf("Fingerprint: got %q, want null", state.Fingerprint.ValueString())
+	}
+	if !state.SSHKeyTypeOf.IsNull() {
+		t.Errorf("SSHKeyTypeOf: got %q, want null", state.SSHKeyTypeOf.ValueString())
+	}
+	if state.Category.ValueString() != "login" {
+		t.Errorf("Category: got %q, want login", state.Category.ValueString())
+	}
+}

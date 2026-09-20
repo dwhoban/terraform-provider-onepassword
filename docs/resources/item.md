@@ -195,7 +195,7 @@ Optional:
 
 - `capitalize` (Boolean) Uppercase one randomly selected word. Applies to the `memorable` type.
 - `digits` (Boolean) Use digits [0-9] when generating the password. Applies to the `random` type.
-- `exclude_characters` (String) Characters to exclude when generating the password. Applies to the `random` type. Requires Connect v1.4.0 or later when using 1Password Connect.
+- `exclude_characters` (String) Characters to exclude when generating the password. Applies to the `random` type. On 1Password Connect this requires Connect v1.4.0 or later.
 - `length` (Number) The length of the password to be generated. Applies to `random` and `pin` types.
 - `separator` (String) The separator between words. Applies to the `memorable` type. One of ["digits" "digits_and_symbols" "spaces" "hyphens" "underscores" "periods" "commas"]
 - `symbols` (Boolean) Use symbols [!@.-_*] when generating the password. Applies to the `random` type.
@@ -237,7 +237,7 @@ Optional:
 
 - `capitalize` (Boolean) Uppercase one randomly selected word. Applies to the `memorable` type.
 - `digits` (Boolean) Use digits [0-9] when generating the password. Applies to the `random` type.
-- `exclude_characters` (String) Characters to exclude when generating the password. Applies to the `random` type. Requires Connect v1.4.0 or later when using 1Password Connect.
+- `exclude_characters` (String) Characters to exclude when generating the password. Applies to the `random` type. On 1Password Connect this requires Connect v1.4.0 or later.
 - `length` (Number) The length of the password to be generated. Applies to `random` and `pin` types.
 - `separator` (String) The separator between words. Applies to the `memorable` type. One of ["digits" "digits_and_symbols" "spaces" "hyphens" "underscores" "periods" "commas"]
 - `symbols` (Boolean) Use symbols [!@.-_*] when generating the password. Applies to the `random` type.
@@ -273,7 +273,7 @@ Optional:
 
 - `capitalize` (Boolean) Uppercase one randomly selected word. Applies to the `memorable` type.
 - `digits` (Boolean) Use digits [0-9] when generating the password. Applies to the `random` type.
-- `exclude_characters` (String) Characters to exclude when generating the password. Applies to the `random` type. Requires Connect v1.4.0 or later when using 1Password Connect.
+- `exclude_characters` (String) Characters to exclude when generating the password. Applies to the `random` type. On 1Password Connect this requires Connect v1.4.0 or later.
 - `length` (Number) The length of the password to be generated. Applies to `random` and `pin` types.
 - `separator` (String) The separator between words. Applies to the `memorable` type. One of ["digits" "digits_and_symbols" "spaces" "hyphens" "underscores" "periods" "commas"]
 - `symbols` (Boolean) Use symbols [!@.-_*] when generating the password. Applies to the `random` type.
