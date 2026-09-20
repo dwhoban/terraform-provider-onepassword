@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/1Password/terraform-provider-onepassword/v3/internal/onepassword/model"
+	opssh "github.com/1Password/terraform-provider-onepassword/v3/internal/onepassword/ssh"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -125,10 +126,10 @@ func toStateSectionsAndFieldsList(modelSections []model.ItemSection, modelFields
 				stateField.Type = setStringValue(string(f.Type))
 				stateField.Value = setStringValuePreservingEmpty(f.Value, stateField.Value)
 
-			if f.Recipe != nil {
-				recipe := toStateRecipe(f.Recipe)
-				stateField.Recipe = []PasswordRecipeModel{recipe}
-			}
+				if f.Recipe != nil {
+					recipe := toStateRecipe(f.Recipe)
+					stateField.Recipe = []PasswordRecipeModel{recipe}
+				}
 
 				if newField {
 					existingFields = append(existingFields, stateField)
@@ -197,6 +198,105 @@ func toStateSectionsAndFieldsMap(item *model.Item, stateSectionMap map[string]On
 	}
 
 	return sectionMap
+}
+
+// categoryManagedSectionIDs lists the 1Password template section IDs that the
+// provider itself creates for a category. They are excluded from the generic
+// section state because their fields surface as top-level attributes; showing
+// them as sections would create permanent drift against user configuration.
+func categoryManagedSectionIDs(category model.ItemCategory) map[string]bool {
+	switch category {
+	case model.Server:
+		return map[string]bool{"admin_console": true}
+	case model.SoftwareLicense:
+		return map[string]bool{"customer": true, "publisher": true}
+	default:
+		return nil
+	}
+}
+
+// toStateCategoryFields maps category-specific fields back to their top-level
+// attributes, matching by field ID regardless of section.
+func toStateCategoryFields(modelItem *model.Item, state *OnePasswordItemResourceModel) {
+	byID := func(id string) (model.ItemField, bool) {
+		for _, f := range modelItem.Fields {
+			if f.ID == id {
+				return f, true
+			}
+		}
+		return model.ItemField{}, false
+	}
+
+	switch modelItem.Category {
+	case model.SSHKey:
+		if f, ok := byID("private_key"); ok && f.Value != "" {
+			if openSSH, err := opssh.PrivateKeyToOpenSSH([]byte(f.Value), modelItem.ID); err == nil {
+				state.PrivateKey = setStringValue(openSSH)
+			} else {
+				state.PrivateKey = setStringValue(f.Value)
+			}
+		}
+		if f, ok := byID("public_key"); ok {
+			state.PublicKey = setStringValuePreservingEmpty(f.Value, state.PublicKey)
+		}
+		if pub := state.PublicKey.ValueString(); pub != "" {
+			if fingerprint, err := opssh.PublicKeyFingerprint(pub); err == nil {
+				state.Fingerprint = setStringValue(fingerprint)
+			}
+			if keyType, err := opssh.KeyTypeFromPublicKey(pub); err == nil {
+				state.SSHKeyTypeOf = setStringValue(keyType)
+			}
+		}
+	case model.APICredential:
+		if f, ok := byID("credential"); ok {
+			state.Credential = setStringValuePreservingEmpty(f.Value, state.Credential)
+		}
+		if f, ok := byID("validFrom"); ok {
+			state.ValidFrom = setStringValuePreservingEmpty(f.Value, state.ValidFrom)
+		}
+		if f, ok := byID("filename"); ok {
+			state.Filename = setStringValuePreservingEmpty(f.Value, state.Filename)
+		}
+	case model.Server:
+		if f, ok := byID("admin_console_url"); ok {
+			state.AdminConsoleURL = setStringValuePreservingEmpty(f.Value, state.AdminConsoleURL)
+		}
+		if f, ok := byID("admin_console_username"); ok {
+			state.AdminConsoleUsername = setStringValuePreservingEmpty(f.Value, state.AdminConsoleUsername)
+		}
+		if f, ok := byID("admin_console_password"); ok {
+			state.AdminConsolePassword = setStringValuePreservingEmpty(f.Value, state.AdminConsolePassword)
+		}
+	case model.Router:
+		if f, ok := byID("network_name"); ok {
+			state.NetworkName = setStringValuePreservingEmpty(f.Value, state.NetworkName)
+		}
+		if f, ok := byID("server"); ok {
+			state.ServerAddress = setStringValuePreservingEmpty(f.Value, state.ServerAddress)
+		}
+		if f, ok := byID("wireless_security"); ok {
+			state.WirelessSecurity = setStringValuePreservingEmpty(f.Value, state.WirelessSecurity)
+		}
+		if f, ok := byID("wireless_password"); ok {
+			state.WirelessPassword = setStringValuePreservingEmpty(f.Value, state.WirelessPassword)
+		}
+	case model.SoftwareLicense:
+		if f, ok := byID("reg_code"); ok {
+			state.LicenseKey = setStringValuePreservingEmpty(f.Value, state.LicenseKey)
+		}
+		if f, ok := byID("product_version"); ok {
+			state.Version = setStringValuePreservingEmpty(f.Value, state.Version)
+		}
+		if f, ok := byID("download_link"); ok {
+			state.DownloadLink = setStringValuePreservingEmpty(f.Value, state.DownloadLink)
+		}
+		if f, ok := byID("reg_name"); ok {
+			state.LicensedTo = setStringValuePreservingEmpty(f.Value, state.LicensedTo)
+		}
+		if f, ok := byID("reg_email"); ok {
+			state.RegisteredEmail = setStringValuePreservingEmpty(f.Value, state.RegisteredEmail)
+		}
+	}
 }
 
 func toStateTopLevelFields(modelFields []model.ItemField, state *OnePasswordItemResourceModel) {

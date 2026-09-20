@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -42,27 +43,59 @@ type OnePasswordItemResource struct {
 
 // OnePasswordItemResourceModel describes the resource data model.
 type OnePasswordItemResourceModel struct {
-	ID                 types.String                                      `tfsdk:"id"`
-	UUID               types.String                                      `tfsdk:"uuid"`
-	Vault              types.String                                      `tfsdk:"vault"`
-	Category           types.String                                      `tfsdk:"category"`
-	Title              types.String                                      `tfsdk:"title"`
-	URL                types.String                                      `tfsdk:"url"`
-	Hostname           types.String                                      `tfsdk:"hostname"`
-	Database           types.String                                      `tfsdk:"database"`
-	Port               types.String                                      `tfsdk:"port"`
-	Type               types.String                                      `tfsdk:"type"`
-	Tags               types.List                                        `tfsdk:"tags"`
-	Username           types.String                                      `tfsdk:"username"`
-	Password           types.String                                      `tfsdk:"password"`
-	PasswordWO         types.String                                      `tfsdk:"password_wo"`
-	PasswordWOVersion  types.Int64                                       `tfsdk:"password_wo_version"`
-	NoteValue          types.String                                      `tfsdk:"note_value"`
-	NoteValueWO        types.String                                      `tfsdk:"note_value_wo"`
-	NoteValueWOVersion types.Int64                                       `tfsdk:"note_value_wo_version"`
-	SectionList        []OnePasswordItemResourceSectionListModel         `tfsdk:"section"`
-	SectionMap         map[string]OnePasswordItemResourceSectionMapModel `tfsdk:"section_map"`
-	Recipe             []PasswordRecipeModel                             `tfsdk:"password_recipe"`
+	ID                 types.String `tfsdk:"id"`
+	UUID               types.String `tfsdk:"uuid"`
+	Vault              types.String `tfsdk:"vault"`
+	Category           types.String `tfsdk:"category"`
+	Title              types.String `tfsdk:"title"`
+	URL                types.String `tfsdk:"url"`
+	Hostname           types.String `tfsdk:"hostname"`
+	Database           types.String `tfsdk:"database"`
+	Port               types.String `tfsdk:"port"`
+	Type               types.String `tfsdk:"type"`
+	Tags               types.List   `tfsdk:"tags"`
+	Username           types.String `tfsdk:"username"`
+	Password           types.String `tfsdk:"password"`
+	PasswordWO         types.String `tfsdk:"password_wo"`
+	PasswordWOVersion  types.Int64  `tfsdk:"password_wo_version"`
+	NoteValue          types.String `tfsdk:"note_value"`
+	NoteValueWO        types.String `tfsdk:"note_value_wo"`
+	NoteValueWOVersion types.Int64  `tfsdk:"note_value_wo_version"`
+
+	// SSH key category
+	SSHKeyType   types.String `tfsdk:"ssh_key_type"`
+	SSHKeyBits   types.Int64  `tfsdk:"ssh_key_bits"`
+	PrivateKey   types.String `tfsdk:"private_key"`
+	PublicKey    types.String `tfsdk:"public_key"`
+	Fingerprint  types.String `tfsdk:"fingerprint"`
+	SSHKeyTypeOf types.String `tfsdk:"key_type"`
+
+	// API credential category
+	Credential types.String `tfsdk:"credential"`
+	ValidFrom  types.String `tfsdk:"valid_from"`
+	Filename   types.String `tfsdk:"filename"`
+
+	// Server category
+	AdminConsoleURL      types.String `tfsdk:"admin_console_url"`
+	AdminConsoleUsername types.String `tfsdk:"admin_console_username"`
+	AdminConsolePassword types.String `tfsdk:"admin_console_password"`
+
+	// Wireless router category
+	NetworkName      types.String `tfsdk:"network_name"`
+	ServerAddress    types.String `tfsdk:"server_address"`
+	WirelessSecurity types.String `tfsdk:"wireless_security"`
+	WirelessPassword types.String `tfsdk:"wireless_password"`
+
+	// Software license category
+	LicenseKey      types.String `tfsdk:"license_key"`
+	Version         types.String `tfsdk:"version"`
+	DownloadLink    types.String `tfsdk:"download_link"`
+	LicensedTo      types.String `tfsdk:"licensed_to"`
+	RegisteredEmail types.String `tfsdk:"registered_email"`
+
+	SectionList []OnePasswordItemResourceSectionListModel         `tfsdk:"section"`
+	SectionMap  map[string]OnePasswordItemResourceSectionMapModel `tfsdk:"section_map"`
+	Recipe      []PasswordRecipeModel                             `tfsdk:"password_recipe"`
 }
 
 type PasswordRecipeModel struct {
@@ -243,11 +276,11 @@ func (r *OnePasswordItemResource) Schema(ctx context.Context, req resource.Schem
 								validateMonthYear(),
 							},
 						},
-					"password_recipe": schema.SingleNestedAttribute{
-						MarkdownDescription: passwordRecipeDescription,
-						Optional:            true,
-						Attributes:          passwordRecipeAttributes(),
-					},
+						"password_recipe": schema.SingleNestedAttribute{
+							MarkdownDescription: passwordRecipeDescription,
+							Optional:            true,
+							Attributes:          passwordRecipeAttributes(),
+						},
 					},
 				},
 			},
@@ -321,6 +354,126 @@ func (r *OnePasswordItemResource) Schema(ctx context.Context, req resource.Schem
 				Validators: []validator.String{
 					stringvalidator.OneOfCaseInsensitive(dbTypes...),
 				},
+			},
+			"ssh_key_type": schema.StringAttribute{
+				MarkdownDescription: fmt.Sprintf(enumDescription, sshKeyTypeDescription, sshKeyTypes),
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("ed25519"),
+				Validators: []validator.String{
+					stringvalidator.OneOf(sshKeyTypes...),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"ssh_key_bits": schema.Int64Attribute{
+				MarkdownDescription: sshKeyBitsDescription,
+				Optional:            true,
+				Computed:            true,
+				Default:             int64default.StaticInt64(2048),
+				Validators: []validator.Int64{
+					int64validator.Between(2048, 4096),
+				},
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
+				},
+			},
+			"private_key": schema.StringAttribute{
+				MarkdownDescription: privateKeyOpenSSHDescription,
+				Computed:            true,
+				Sensitive:           true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"public_key": schema.StringAttribute{
+				MarkdownDescription: publicKeyDescription,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"fingerprint": schema.StringAttribute{
+				MarkdownDescription: fingerprintDescription,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"key_type": schema.StringAttribute{
+				MarkdownDescription: sshKeyTypeOfDescription,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"credential": schema.StringAttribute{
+				MarkdownDescription: credentialDescription,
+				Optional:            true,
+				Sensitive:           true,
+			},
+			"valid_from": schema.StringAttribute{
+				MarkdownDescription: validFromDescription,
+				Optional:            true,
+				Validators: []validator.String{
+					validateDate(),
+				},
+			},
+			"filename": schema.StringAttribute{
+				MarkdownDescription: filenameDescription,
+				Optional:            true,
+			},
+			"admin_console_url": schema.StringAttribute{
+				MarkdownDescription: adminConsoleURLDescription,
+				Optional:            true,
+			},
+			"admin_console_username": schema.StringAttribute{
+				MarkdownDescription: adminConsoleUsernameDescription,
+				Optional:            true,
+			},
+			"admin_console_password": schema.StringAttribute{
+				MarkdownDescription: adminConsolePasswordDescription,
+				Optional:            true,
+				Sensitive:           true,
+			},
+			"network_name": schema.StringAttribute{
+				MarkdownDescription: networkNameDescription,
+				Optional:            true,
+			},
+			"server_address": schema.StringAttribute{
+				MarkdownDescription: serverAddressDescription,
+				Optional:            true,
+			},
+			"wireless_security": schema.StringAttribute{
+				MarkdownDescription: wirelessSecurityDescription,
+				Optional:            true,
+			},
+			"wireless_password": schema.StringAttribute{
+				MarkdownDescription: wirelessPasswordDescription,
+				Optional:            true,
+				Sensitive:           true,
+			},
+			"license_key": schema.StringAttribute{
+				MarkdownDescription: licenseKeyDescription,
+				Optional:            true,
+				Sensitive:           true,
+			},
+			"version": schema.StringAttribute{
+				MarkdownDescription: versionDescription,
+				Optional:            true,
+			},
+			"download_link": schema.StringAttribute{
+				MarkdownDescription: downloadLinkDescription,
+				Optional:            true,
+			},
+			"licensed_to": schema.StringAttribute{
+				MarkdownDescription: licensedToDescription,
+				Optional:            true,
+			},
+			"registered_email": schema.StringAttribute{
+				MarkdownDescription: registeredEmailDescription,
+				Optional:            true,
 			},
 			"tags": schema.ListAttribute{
 				MarkdownDescription: tagsDescription,
@@ -733,13 +886,42 @@ func modelToState(ctx context.Context, modelItem *model.Item, state *OnePassword
 	state.Title = setStringValuePreservingEmpty(modelItem.Title, state.Title)
 	state.Category = setStringValue(strings.ToLower(string(modelItem.Category)))
 
+	// Category-managed sections surface as top-level attributes, so keep them
+	// out of the generic section state.
+	managedSections := categoryManagedSectionIDs(modelItem.Category)
+	visibleSections := make([]model.ItemSection, 0, len(modelItem.Sections))
+	for _, s := range modelItem.Sections {
+		if !managedSections[s.ID] {
+			visibleSections = append(visibleSections, s)
+		}
+	}
+
 	if len(state.SectionMap) > 0 {
-		state.SectionMap = toStateSectionsAndFieldsMap(modelItem, state.SectionMap)
+		itemWithoutManagedSections := *modelItem
+		itemWithoutManagedSections.Sections = visibleSections
+		state.SectionMap = toStateSectionsAndFieldsMap(&itemWithoutManagedSections, state.SectionMap)
 	} else {
-		state.SectionList = toStateSectionsAndFieldsList(modelItem.Sections, modelItem.Fields, state.SectionList)
+		state.SectionList = toStateSectionsAndFieldsList(visibleSections, modelItem.Fields, state.SectionList)
 	}
 
 	toStateTopLevelFields(modelItem.Fields, state)
+	toStateCategoryFields(modelItem, state)
+
+	// SSH key attributes are only meaningful for SSH key items.
+	if modelItem.Category != model.SSHKey {
+		if state.PrivateKey.IsUnknown() {
+			state.PrivateKey = types.StringNull()
+		}
+		if state.PublicKey.IsUnknown() {
+			state.PublicKey = types.StringNull()
+		}
+		if state.Fingerprint.IsUnknown() {
+			state.Fingerprint = types.StringNull()
+		}
+		if state.SSHKeyTypeOf.IsUnknown() {
+			state.SSHKeyTypeOf = types.StringNull()
+		}
+	}
 
 	for _, u := range modelItem.URLs {
 		if u.Primary {
@@ -796,6 +978,25 @@ func stateToModel(ctx context.Context, state OnePasswordItemResourceModel) (*mod
 	case "secure_note":
 		modelItem.Category = model.SecureNote
 		modelItem.Fields = toModelSecureNoteFields(state)
+	case "ssh_key":
+		modelItem.Category = model.SSHKey
+		var diagnostics diag.Diagnostics
+		modelItem.Fields, diagnostics = toModelSSHKeyFields(state)
+		if diagnostics.HasError() {
+			return nil, diagnostics
+		}
+	case "api_credential":
+		modelItem.Category = model.APICredential
+		modelItem.Fields = toModelAPICredentialFields(state)
+	case "server":
+		modelItem.Category = model.Server
+		modelItem.Fields, modelItem.Sections = toModelServerFields(state)
+	case "wireless_router":
+		modelItem.Category = model.Router
+		modelItem.Fields = toModelRouterFields(state)
+	case "software_license":
+		modelItem.Category = model.SoftwareLicense
+		modelItem.Fields, modelItem.Sections = toModelSoftwareLicenseFields(state)
 	}
 
 	tags, diagnostics := toModelTags(ctx, state)
