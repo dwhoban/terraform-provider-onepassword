@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/1Password/terraform-provider-onepassword/v3/internal/onepassword/model"
@@ -245,6 +246,24 @@ func toStateCategoryFields(modelItem *model.Item, state *OnePasswordItemResource
 			}
 			if keyType, err := opssh.KeyTypeFromPublicKey(pub); err == nil {
 				state.SSHKeyTypeOf = setStringValue(keyType)
+
+				// ssh_key_type and ssh_key_bits are not stored on the item;
+				// derive them from the public key so imported state matches.
+				if state.SSHKeyType.IsNull() || state.SSHKeyType.IsUnknown() {
+					switch {
+					case keyType == "Ed25519":
+						state.SSHKeyType = types.StringValue("ed25519")
+						if state.SSHKeyBits.IsNull() || state.SSHKeyBits.IsUnknown() {
+							state.SSHKeyBits = types.Int64Value(2048)
+						}
+					case strings.HasPrefix(keyType, "RSA, "):
+						state.SSHKeyType = types.StringValue("rsa")
+						bitsStr := strings.TrimSuffix(strings.TrimPrefix(keyType, "RSA, "), "-bit")
+						if bits, err := strconv.Atoi(bitsStr); err == nil && (state.SSHKeyBits.IsNull() || state.SSHKeyBits.IsUnknown()) {
+							state.SSHKeyBits = types.Int64Value(int64(bits))
+						}
+					}
+				}
 			}
 		}
 	case model.APICredential:
