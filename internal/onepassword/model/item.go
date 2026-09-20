@@ -396,6 +396,12 @@ var wordListToSDKMap = map[string]sdk.WordListType{
 	"three_letters": sdk.WordListTypeThreeLetters,
 }
 
+// maxGenerateAttempts bounds the rejection-sampling loop used to honor
+// ExcludeCharacters for random recipes. Typical exclusion sets converge in a
+// handful of attempts; the bound only triggers for sets that conflict with
+// the recipe (e.g. excluding all digits while digits are required).
+const maxGenerateAttempts = 100
+
 func generatePassword(recipe *GeneratorRecipe) (string, error) {
 	kind := recipe.Kind
 	if kind == "" {
@@ -443,12 +449,25 @@ func generatePassword(recipe *GeneratorRecipe) (string, error) {
 		})
 	}
 
-	passwordResponse, err := sdk.Secrets.GeneratePassword(context.Background(), sdkRecipe)
-	if err != nil {
-		return "", err
-	}
+	// The generator has no exclusion support, so excluded characters are
+	// honored by regenerating until the output is free of them. Conditioning
+	// the generator's output on the constraint is equivalent to sampling
+	// from the constrained character set.
+	for attempt := 1; ; attempt++ {
+		passwordResponse, err := sdk.Secrets.GeneratePassword(context.Background(), sdkRecipe)
+		if err != nil {
+			return "", err
+		}
 
-	return passwordResponse.Password, nil
+		password := passwordResponse.Password
+		if recipe.ExcludeCharacters == "" || !strings.ContainsAny(password, recipe.ExcludeCharacters) {
+			return password, nil
+		}
+
+		if attempt >= maxGenerateAttempts {
+			return "", fmt.Errorf("could not generate a password excluding %q after %d attempts; the excluded characters may conflict with the recipe's digits or symbols settings", recipe.ExcludeCharacters, maxGenerateAttempts)
+		}
+	}
 }
 
 func buildSectionMap(item *sdk.Item) map[string]ItemSection {

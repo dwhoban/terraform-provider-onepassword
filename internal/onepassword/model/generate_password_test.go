@@ -2,6 +2,7 @@ package model
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -81,6 +82,37 @@ func TestGeneratePassword(t *testing.T) {
 				}
 			},
 		},
+		"generates a random password excluding characters": {
+			recipe: &GeneratorRecipe{
+				Kind:              RecipeKindRandom,
+				Length:            32,
+				CharacterSets:     []CharacterSet{CharacterSetDigits, CharacterSetSymbols},
+				ExcludeCharacters: "l1IO0",
+			},
+			validate: func(t *testing.T, password string) {
+				if len(password) != 32 {
+					t.Errorf("length: got %d, want 32", len(password))
+				}
+				if strings.ContainsAny(password, "l1IO0") {
+					t.Errorf("excluded characters present: got %q, want none of %q", password, "l1IO0")
+				}
+				if !regexp.MustCompile(`[0-9]`).MatchString(password) {
+					t.Errorf("digits: got %q, want at least one digit despite exclusions", password)
+				}
+			},
+		},
+		"exclusions apply without digits or symbols": {
+			recipe: &GeneratorRecipe{
+				Kind:              RecipeKindRandom,
+				Length:            20,
+				ExcludeCharacters: "aeiou",
+			},
+			validate: func(t *testing.T, password string) {
+				if strings.ContainsAny(password, "aeiou") {
+					t.Errorf("excluded characters present: got %q, want none of %q", password, "aeiou")
+				}
+			},
+		},
 	}
 
 	for description, test := range tests {
@@ -95,5 +127,22 @@ func TestGeneratePassword(t *testing.T) {
 			}
 			test.validate(t, password)
 		})
+	}
+}
+
+func TestGeneratePasswordUnsatisfiableExclusions(t *testing.T) {
+	t.Parallel()
+
+	_, err := generatePassword(&GeneratorRecipe{
+		Kind:              RecipeKindRandom,
+		Length:            20,
+		CharacterSets:     []CharacterSet{CharacterSetDigits},
+		ExcludeCharacters: "0123456789",
+	})
+	if err == nil {
+		t.Fatal("generatePassword() want error for exclusions conflicting with required digits, got nil")
+	}
+	if !strings.Contains(err.Error(), "excluding") {
+		t.Errorf("generatePassword() error = %v, want it to mention the exclusion set", err)
 	}
 }
