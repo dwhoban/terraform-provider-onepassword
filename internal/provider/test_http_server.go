@@ -96,21 +96,14 @@ func setupTestServer(expectedItem *model.Item, expectedVault model.Vault, t *tes
 				itemToReturn := convertBodyToItem(r, t)
 
 				// Simulate server-side password generation: fill password fields
-				// that were posted without a value. If the item has no password
-				// field at all (e.g. a secure note or SSH key), keep the legacy
-				// behavior of appending one — except for secure notes, which
-				// have no password at all.
+				// that were posted without a value. Items without a password
+				// field (secure notes, SSH keys, ...) get none appended, so
+				// missing state handling is exercised the same way the real
+				// API behaves.
 				existingPassword := slices.IndexFunc(itemToReturn.Fields, func(f model.ItemField) bool {
 					return f.ID == "password" || f.Label == "password" || f.Purpose == model.FieldPurposePassword
 				})
-				if existingPassword == -1 {
-					if itemToReturn.Category != model.SecureNote {
-						itemToReturn.Fields = append(itemToReturn.Fields, model.ItemField{
-							Label: "password",
-							Value: "somepassword",
-						})
-					}
-				} else if itemToReturn.Fields[existingPassword].Value == "" {
+				if existingPassword != -1 && itemToReturn.Fields[existingPassword].Value == "" {
 					itemToReturn.Fields[existingPassword].Value = "somepassword"
 				}
 

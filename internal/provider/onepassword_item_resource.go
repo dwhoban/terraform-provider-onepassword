@@ -923,6 +923,14 @@ func modelToState(ctx context.Context, modelItem *model.Item, state *OnePassword
 		}
 	}
 
+	// Mirror the schema defaults so imported state matches created state.
+	if state.SSHKeyType.IsNull() || state.SSHKeyType.IsUnknown() {
+		state.SSHKeyType = types.StringValue("ed25519")
+	}
+	if state.SSHKeyBits.IsNull() || state.SSHKeyBits.IsUnknown() {
+		state.SSHKeyBits = types.Int64Value(2048)
+	}
+
 	for _, u := range modelItem.URLs {
 		if u.Primary {
 			state.URL = setStringValuePreservingEmpty(u.URL, state.URL)
@@ -935,9 +943,12 @@ func modelToState(ctx context.Context, modelItem *model.Item, state *OnePassword
 	}
 	state.Tags = tags
 
-	// Password is not set for secure notes
-	if modelItem.Category == model.SecureNote && state.Password.IsUnknown() {
-		state.Password = types.StringNull()
+	// Password is not set for categories without a password field
+	switch modelItem.Category {
+	case model.SecureNote, model.SSHKey, model.APICredential, model.SoftwareLicense:
+		if state.Password.IsUnknown() {
+			state.Password = types.StringNull()
+		}
 	}
 
 	return nil
