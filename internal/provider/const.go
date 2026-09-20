@@ -101,5 +101,6 @@ var (
 		string(model.FieldTypeDate),
 		string(model.FieldTypeMonthYear),
 		string(model.FieldTypeMenu),
+		string(model.FieldTypeSSHKey),
 	}
 )

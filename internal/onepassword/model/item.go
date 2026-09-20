@@ -20,13 +20,16 @@ const (
 	CharacterSetDigits  CharacterSet = "DIGITS"
 	CharacterSetSymbols CharacterSet = "SYMBOLS"
 
-	Login         ItemCategory = "LOGIN"
-	Password      ItemCategory = "PASSWORD"
-	SecureNote    ItemCategory = "SECURE_NOTE"
-	Document      ItemCategory = "DOCUMENT"
-	SSHKey        ItemCategory = "SSH_KEY"
-	Database      ItemCategory = "DATABASE"
-	APICredential ItemCategory = "API_CREDENTIAL"
+	Login           ItemCategory = "LOGIN"
+	Password        ItemCategory = "PASSWORD"
+	SecureNote      ItemCategory = "SECURE_NOTE"
+	Document        ItemCategory = "DOCUMENT"
+	SSHKey          ItemCategory = "SSH_KEY"
+	Database        ItemCategory = "DATABASE"
+	APICredential   ItemCategory = "API_CREDENTIAL"
+	Server          ItemCategory = "SERVER"
+	Router          ItemCategory = "WIRELESS_ROUTER"
+	SoftwareLicense ItemCategory = "SOFTWARE_LICENSE"
 
 	FieldPurposeUsername ItemFieldPurpose = "USERNAME"
 	FieldPurposePassword ItemFieldPurpose = "PASSWORD"
@@ -38,6 +41,7 @@ const (
 	FieldTypeMenu      ItemFieldType = "MENU"
 	FieldTypeMonthYear ItemFieldType = "MONTH_YEAR"
 	FieldTypeOTP       ItemFieldType = "OTP"
+	FieldTypeSSHKey    ItemFieldType = "SSH_KEY"
 	FieldTypeString    ItemFieldType = "STRING"
 	FieldTypeURL       ItemFieldType = "URL"
 )
@@ -599,6 +603,7 @@ var modelToSdkFiledTypeMap = map[ItemFieldType]sdk.ItemFieldType{
 	FieldTypeMenu:      sdk.ItemFieldTypeMenu,
 	FieldTypeMonthYear: sdk.ItemFieldTypeMonthYear,
 	FieldTypeOTP:       sdk.ItemFieldTypeTOTP,
+	FieldTypeSSHKey:    sdk.ItemFieldTypeSSHKey,
 	FieldTypeString:    sdk.ItemFieldTypeText,
 	FieldTypeURL:       sdk.ItemFieldTypeURL,
 }
@@ -614,6 +619,7 @@ var sdkToModelFieldTypeMap = map[sdk.ItemFieldType]ItemFieldType{
 	sdk.ItemFieldTypeMenu:      FieldTypeMenu,
 	sdk.ItemFieldTypeMonthYear: FieldTypeMonthYear,
 	sdk.ItemFieldTypeTOTP:      FieldTypeOTP,
+	sdk.ItemFieldTypeSSHKey:    FieldTypeSSHKey,
 	sdk.ItemFieldTypeText:      FieldTypeString,
 	sdk.ItemFieldTypeURL:       FieldTypeURL,
 }
@@ -623,12 +629,16 @@ func toModelFieldType(filedType sdk.ItemFieldType) ItemFieldType {
 }
 
 var modelToSDKCategoryMap = map[ItemCategory]sdk.ItemCategory{
-	Login:      sdk.ItemCategoryLogin,
-	Password:   sdk.ItemCategoryPassword,
-	SecureNote: sdk.ItemCategorySecureNote,
-	Document:   sdk.ItemCategoryDocument,
-	SSHKey:     sdk.ItemCategorySSHKey,
-	Database:   sdk.ItemCategoryDatabase,
+	Login:           sdk.ItemCategoryLogin,
+	Password:        sdk.ItemCategoryPassword,
+	SecureNote:      sdk.ItemCategorySecureNote,
+	Document:        sdk.ItemCategoryDocument,
+	SSHKey:          sdk.ItemCategorySSHKey,
+	Database:        sdk.ItemCategoryDatabase,
+	APICredential:   sdk.ItemCategoryAPICredentials,
+	Server:          sdk.ItemCategoryServer,
+	Router:          sdk.ItemCategoryRouter,
+	SoftwareLicense: sdk.ItemCategorySoftwareLicense,
 }
 
 func fromModelCategoryToSDK(itemCategory ItemCategory) sdk.ItemCategory {
@@ -643,6 +653,9 @@ var sdkToModelCategoryMap = map[sdk.ItemCategory]ItemCategory{
 	sdk.ItemCategorySSHKey:         SSHKey,
 	sdk.ItemCategoryDatabase:       Database,
 	sdk.ItemCategoryAPICredentials: APICredential,
+	sdk.ItemCategoryServer:         Server,
+	sdk.ItemCategoryRouter:         Router,
+	sdk.ItemCategorySoftwareLicense: SoftwareLicense,
 }
 
 func fromSDKCategoryToModel(itemCategory sdk.ItemCategory) ItemCategory {
