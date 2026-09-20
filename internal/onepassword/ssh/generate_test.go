@@ -84,3 +84,43 @@ func TestGenerateKeyPairValidation(t *testing.T) {
 		t.Error("rsa 1024 bits: want error, got nil")
 	}
 }
+
+func TestPublicKeyFromPrivateKey(t *testing.T) {
+	t.Parallel()
+
+	ed25519Key, err := GenerateKeyPair("ed25519", 0)
+	if err != nil {
+		t.Fatalf("GenerateKeyPair() error = %v", err)
+	}
+	rsaKey, err := GenerateKeyPair("rsa", 2048)
+	if err != nil {
+		t.Fatalf("GenerateKeyPair() error = %v", err)
+	}
+
+	tests := map[string]struct {
+		privateKeyPEM string
+		expected      string
+	}{
+		"derives from PKCS#8 ed25519": {
+			privateKeyPEM: ed25519Key.PrivateKeyPKCS8,
+			expected:      ed25519Key.PublicKey,
+		},
+		"derives from PKCS#8 rsa": {
+			privateKeyPEM: rsaKey.PrivateKeyPKCS8,
+			expected:      rsaKey.PublicKey,
+		},
+	}
+
+	for description, test := range tests {
+		t.Run(description, func(t *testing.T) {
+			t.Parallel()
+			got, err := PublicKeyFromPrivateKey(test.privateKeyPEM)
+			if err != nil {
+				t.Fatalf("PublicKeyFromPrivateKey() error = %v", err)
+			}
+			if got != test.expected {
+				t.Errorf("PublicKeyFromPrivateKey() = %q, want %q", got, test.expected)
+			}
+		})
+	}
+}

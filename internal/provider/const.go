@@ -41,7 +41,7 @@ const (
 	dbTypeDescription     = "(Only applies to the database category) The type of database."
 	typeDescription       = "(Only applies to database and API credential categories) The type of database or API Credential."
 
-	sshKeyTypeDescription           = "(Only applies to the SSH key category) The type of SSH key to generate."
+	sshKeyTypeDescription           = "(Only applies to the SSH key category) The type of SSH key to generate. **Note**: 1Password Connect has limited support for SSH key items (see [1Password/connect#107](https://github.com/1Password/connect/issues/107)); the service account and desktop app integrations are recommended."
 	sshKeyBitsDescription           = "(Only applies to the SSH key category) The size in bits of the RSA key to generate. Only used when `ssh_key_type` is `rsa`."
 	fingerprintDescription          = "(Only applies to the SSH key category) The SHA256 fingerprint of the generated public key."
 	sshKeyTypeOfDescription         = "(Only applies to the SSH key category) The type of the generated key, e.g. `Ed25519` or `RSA, 2048-bit`."

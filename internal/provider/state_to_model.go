@@ -125,9 +125,11 @@ func toModelSecureNoteFields(state OnePasswordItemResourceModel) []model.ItemFie
 
 // toModelSSHKeyFields builds the fields for an SSH key item. On create the
 // key pair is generated; on update the existing private key from state (in
-// OpenSSH form) is converted back to the PKCS#8 form 1Password stores.
+// OpenSSH form) is converted back to the PKCS#8 form 1Password stores. Only
+// the private key is written: the account API synthesizes the public key,
+// fingerprint, and key type from it.
 func toModelSSHKeyFields(state OnePasswordItemResourceModel) ([]model.ItemField, diag.Diagnostics) {
-	var privateKeyPKCS8, publicKey string
+	var privateKeyPKCS8 string
 
 	if state.PrivateKey.ValueString() == "" {
 		key, err := opssh.GenerateKeyPair(state.SSHKeyType.ValueString(), int(state.SSHKeyBits.ValueInt64()))
@@ -138,7 +140,6 @@ func toModelSSHKeyFields(state OnePasswordItemResourceModel) ([]model.ItemField,
 			)}
 		}
 		privateKeyPKCS8 = key.PrivateKeyPKCS8
-		publicKey = key.PublicKey
 	} else {
 		pkcs8, err := opssh.OpenSSHToPKCS8(state.PrivateKey.ValueString())
 		if err != nil {
@@ -148,7 +149,6 @@ func toModelSSHKeyFields(state OnePasswordItemResourceModel) ([]model.ItemField,
 			)}
 		}
 		privateKeyPKCS8 = pkcs8
-		publicKey = state.PublicKey.ValueString()
 	}
 
 	fields := []model.ItemField{
@@ -158,22 +158,14 @@ func toModelSSHKeyFields(state OnePasswordItemResourceModel) ([]model.ItemField,
 			Type:  model.FieldTypeSSHKey,
 			Value: privateKeyPKCS8,
 		},
+		{
+			ID:      "notesPlain",
+			Label:   "notesPlain",
+			Type:    model.FieldTypeString,
+			Purpose: model.FieldPurposeNotes,
+			Value:   state.NoteValue.ValueString(),
+		},
 	}
-	if publicKey != "" {
-		fields = append(fields, model.ItemField{
-			ID:    "public_key",
-			Label: "public key",
-			Type:  model.FieldTypeString,
-			Value: publicKey,
-		})
-	}
-	fields = append(fields, model.ItemField{
-		ID:      "notesPlain",
-		Label:   "notesPlain",
-		Type:    model.FieldTypeString,
-		Purpose: model.FieldPurposeNotes,
-		Value:   state.NoteValue.ValueString(),
-	})
 
 	return fields, nil
 }

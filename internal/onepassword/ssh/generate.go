@@ -66,6 +66,61 @@ func newGeneratedKey(priv any, pub any) (*GeneratedKey, error) {
 	}, nil
 }
 
+// PublicKeyFromPrivateKey derives the authorized_keys-format public key
+// from a PEM private key in PKCS#8, PKCS#1, or OpenSSH form.
+func PublicKeyFromPrivateKey(privateKeyPEM string) (string, error) {
+	key, err := parsePrivateKeyPEM(privateKeyPEM)
+	if err != nil {
+		return "", err
+	}
+
+	var pub any
+	switch k := key.(type) {
+	case *rsa.PrivateKey:
+		pub = &k.PublicKey
+	case ed25519.PrivateKey:
+		pub = k.Public()
+	case *ed25519.PrivateKey:
+		pub = k.Public()
+	default:
+		return "", fmt.Errorf("unsupported private key type %T", key)
+	}
+
+	sshPub, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		return "", fmt.Errorf("deriving SSH public key: %w", err)
+	}
+
+	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sshPub))), nil
+}
+
+// parsePrivateKeyPEM decodes a PEM private key in PKCS#8, PKCS#1, or
+// OpenSSH form.
+func parsePrivateKeyPEM(privateKeyPEM string) (any, error) {
+	block, _ := pem.Decode([]byte(privateKeyPEM))
+	if block == nil {
+		return nil, fmt.Errorf("invalid PEM private key passed in, decoding did not find a key")
+	}
+
+	switch block.Type {
+	case "PRIVATE KEY":
+		return x509.ParsePKCS8PrivateKey(block.Bytes)
+	case "RSA PRIVATE KEY":
+		return x509.ParsePKCS1PrivateKey(block.Bytes)
+	case "OPENSSH PRIVATE KEY":
+		parsed, err := ssh.ParseRawPrivateKey([]byte(privateKeyPEM))
+		if err != nil {
+			return nil, fmt.Errorf("error parsing OpenSSH private key: %w", err)
+		}
+		if k, ok := parsed.(*ed25519.PrivateKey); ok {
+			return *k, nil
+		}
+		return parsed, nil
+	default:
+		return nil, fmt.Errorf("unsupported key type %q passed with the PEM", block.Type)
+	}
+}
+
 // OpenSSHToPKCS8 converts an OpenSSH-format PEM private key back to PKCS#8
 // PEM, the encoding 1Password stores. Used to preserve a generated key
 // across resource updates.
@@ -75,33 +130,14 @@ func OpenSSHToPKCS8(openSSHPEM string) (string, error) {
 		return "", fmt.Errorf("invalid PEM private key passed in, decoding did not find a key")
 	}
 
-	var key any
-	var err error
-
-	switch block.Type {
-	case "OPENSSH PRIVATE KEY":
-		parsed, err := ssh.ParseRawPrivateKey([]byte(openSSHPEM))
-		if err != nil {
-			return "", fmt.Errorf("error parsing OpenSSH private key: %w", err)
-		}
-		// ssh.ParseRawPrivateKey returns pointer types (*ed25519.PrivateKey,
-		// *rsa.PrivateKey); dereference them for PKCS#8 marshaling.
-		switch k := parsed.(type) {
-		case *ed25519.PrivateKey:
-			key = *k
-		default:
-			key = parsed
-		}
-	case "PRIVATE KEY":
+	if block.Type == "PRIVATE KEY" {
 		// Already PKCS#8.
 		return openSSHPEM, nil
-	case "RSA PRIVATE KEY":
-		key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
-		if err != nil {
-			return "", fmt.Errorf("error parsing PKCS#1 private key: %w", err)
-		}
-	default:
-		return "", fmt.Errorf("unsupported key type %q passed with the PEM", block.Type)
+	}
+
+	key, err := parsePrivateKeyPEM(openSSHPEM)
+	if err != nil {
+		return "", err
 	}
 
 	der, err := x509.MarshalPKCS8PrivateKey(key)

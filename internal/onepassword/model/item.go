@@ -380,19 +380,19 @@ func toSDKWebsites(urls []ItemURL) []sdk.Website {
 
 // separatorToSDKMap translates provider-level separator values to the SDK's SeparatorType.
 var separatorToSDKMap = map[string]sdk.SeparatorType{
-	"digits":            sdk.SeparatorTypeDigits,
+	"digits":             sdk.SeparatorTypeDigits,
 	"digits_and_symbols": sdk.SeparatorTypeDigitsAndSymbols,
-	"spaces":            sdk.SeparatorTypeSpaces,
-	"hyphens":           sdk.SeparatorTypeHyphens,
-	"underscores":       sdk.SeparatorTypeUnderscores,
-	"periods":           sdk.SeparatorTypePeriods,
-	"commas":            sdk.SeparatorTypeCommas,
+	"spaces":             sdk.SeparatorTypeSpaces,
+	"hyphens":            sdk.SeparatorTypeHyphens,
+	"underscores":        sdk.SeparatorTypeUnderscores,
+	"periods":            sdk.SeparatorTypePeriods,
+	"commas":             sdk.SeparatorTypeCommas,
 }
 
 // wordListToSDKMap translates provider-level word list values to the SDK's WordListType.
 var wordListToSDKMap = map[string]sdk.WordListType{
-	"full_words":   sdk.WordListTypeFullWords,
-	"syllables":    sdk.WordListTypeSyllables,
+	"full_words":    sdk.WordListTypeFullWords,
+	"syllables":     sdk.WordListTypeSyllables,
 	"three_letters": sdk.WordListTypeThreeLetters,
 }
 
@@ -722,15 +722,15 @@ func fromModelCategoryToSDK(itemCategory ItemCategory) sdk.ItemCategory {
 }
 
 var sdkToModelCategoryMap = map[sdk.ItemCategory]ItemCategory{
-	sdk.ItemCategoryLogin:          Login,
-	sdk.ItemCategoryPassword:       Password,
-	sdk.ItemCategorySecureNote:     SecureNote,
-	sdk.ItemCategoryDocument:       Document,
-	sdk.ItemCategorySSHKey:         SSHKey,
-	sdk.ItemCategoryDatabase:       Database,
-	sdk.ItemCategoryAPICredentials: APICredential,
-	sdk.ItemCategoryServer:         Server,
-	sdk.ItemCategoryRouter:         Router,
+	sdk.ItemCategoryLogin:           Login,
+	sdk.ItemCategoryPassword:        Password,
+	sdk.ItemCategorySecureNote:      SecureNote,
+	sdk.ItemCategoryDocument:        Document,
+	sdk.ItemCategorySSHKey:          SSHKey,
+	sdk.ItemCategoryDatabase:        Database,
+	sdk.ItemCategoryAPICredentials:  APICredential,
+	sdk.ItemCategoryServer:          Server,
+	sdk.ItemCategoryRouter:          Router,
 	sdk.ItemCategorySoftwareLicense: SoftwareLicense,
 }
 

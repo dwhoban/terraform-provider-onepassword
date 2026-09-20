@@ -168,7 +168,7 @@ resource "onepassword_item" "example_pin" {
 - `section_map` (Attributes Map) A map of custom sections in an item, keyed by section label. This allows direct lookup of sections and their fields by label. Cannot be used together with `section`. Use either `section` (list) or `section_map` (map), but not both. (see [below for nested schema](#nestedatt--section_map))
 - `server_address` (String) (Only applies to the wireless router category) The server / IP address of the router.
 - `ssh_key_bits` (Number) (Only applies to the SSH key category) The size in bits of the RSA key to generate. Only used when `ssh_key_type` is `rsa`.
-- `ssh_key_type` (String) (Only applies to the SSH key category) The type of SSH key to generate. One of ["ed25519" "rsa"]
+- `ssh_key_type` (String) (Only applies to the SSH key category) The type of SSH key to generate. **Note**: 1Password Connect has limited support for SSH key items (see [1Password/connect#107](https://github.com/1Password/connect/issues/107)); the service account and desktop app integrations are recommended. One of ["ed25519" "rsa"]
 - `tags` (List of String) An array of strings of the tags assigned to the item.
 - `title` (String) The title of the item.
 - `type` (String) (Only applies to the database category) The type of database. One of ["db2" "filemaker" "msaccess" "mssql" "mysql" "oracle" "postgresql" "sqlite" "other"]
