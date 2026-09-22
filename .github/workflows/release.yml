@@ -47,7 +47,7 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
       - name: Run GoReleaser
-        uses: step-security/goreleaser-action@aee981bee303ff102e9a607e46c6a6ace9201398 # v7.2.2
+        uses: step-security/goreleaser-action@0b0370b85341e59c5eca041619966f53c80fbd41 # v7.2.3
         with:
           args: release --clean --config .goreleaser.linux.yml
         env:
@@ -93,7 +93,7 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
       - name: Run GoReleaser
-        uses: step-security/goreleaser-action@aee981bee303ff102e9a607e46c6a6ace9201398 # v7.2.2
+        uses: step-security/goreleaser-action@0b0370b85341e59c5eca041619966f53c80fbd41 # v7.2.3
         with:
           args: release --clean --config .goreleaser.darwin.yml
         env:
@@ -134,7 +134,7 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
       - name: Run GoReleaser
-        uses: step-security/goreleaser-action@aee981bee303ff102e9a607e46c6a6ace9201398 # v7.2.2
+        uses: step-security/goreleaser-action@0b0370b85341e59c5eca041619966f53c80fbd41 # v7.2.3
         with:
           args: release --clean --config .goreleaser.windows.yml
         env:
